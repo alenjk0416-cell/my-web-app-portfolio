@@ -1,0 +1,952 @@
+인벤토리 html
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>一時仮置品数量 管理 Dashboard (Portfolio Ver.)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Inter:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Tailwind CSS (CDN for standalone usage) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'Noto Sans JP', 'sans-serif'],
+                        mono: ['Roboto Mono', 'monospace'],
+                    },
+                    colors: {
+                        slate: {
+                            50: '#F8FAFC', 100: '#F1F5F9', 200: '#E2E8F0', 300: '#CBD5E1',
+                            400: '#94A3B8', 500: '#64748B', 600: '#475569', 700: '#334155',
+                            800: '#1E293B', 900: '#0F172A',
+                        },
+                        primary: '#EA580C', // Orange Brand Color
+                        danger: '#EF4444',
+                        success: '#10B981',
+                    },
+                    boxShadow: {
+                        'soft': '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02)',
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
+    <style>
+        /* Base settings */
+        body { background-color: #F8FAFC; color: #0F172A; -webkit-font-smoothing: antialiased; }
+        
+        /* Clean Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+        /* --- [Intro Screen] Network Effect --- */
+        #intro-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #ffffff; z-index: 9999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            transition: opacity 1.2s ease-in-out, visibility 1.2s;
+        }
+        #intro-screen.fade-out { opacity: 0; visibility: hidden; pointer-events: none; }
+        #intro-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 0; }
+        .intro-content { position: relative; z-index: 10; text-align: center; color: #0f172a; animation: fadeIn 1s ease-out; }
+        .intro-title { font-size: 2rem; font-weight: 800; letter-spacing: 1px; margin-bottom: 0.5rem; }
+        .intro-sub { color: #64748b; font-size: 0.9rem; font-family: 'Roboto Mono', monospace; }
+        .intro-loader {
+            display: inline-block; width: 40px; height: 40px;
+            border: 3px solid #e2e8f0; border-radius: 50%;
+            border-top-color: #ea580c; animation: spin 1s ease-in-out infinite; margin-top: 25px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* UI Components */
+        .card-base {
+            background-color: #FFFFFF;
+            border-radius: 0.75rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+            border: 1px solid #F1F5F9;
+            transition: box-shadow 0.2s ease;
+        }
+        .card-base:hover { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+
+        .btn-primary {
+            background-color: #0F172A; color: white; font-weight: 600; padding: 0.5rem 1rem;
+            border-radius: 0.5rem; font-size: 0.875rem; transition: background-color 0.2s;
+        }
+        .btn-primary:hover { background-color: #334155; }
+
+        .btn-secondary {
+            background-color: #FFFFFF; color: #475569; border: 1px solid #E2E8F0;
+            font-weight: 500; padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem;
+            transition: all 0.2s;
+        }
+        .btn-secondary:hover { background-color: #F8FAFC; border-color: #CBD5E1; color: #1E293B; }
+
+        .input-base {
+            background-color: #FFFFFF; border: 1px solid #E2E8F0; color: #1E293B;
+            border-radius: 0.5rem; padding: 0.5rem 0.75rem; font-size: 0.875rem; outline: none;
+            transition: border-color 0.2s;
+        }
+        .input-base:focus { border-color: #94A3B8; ring: 2px solid #ea580c20; }
+
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        .animate-fade-in { animation: fadeIn 0.5s ease-out forwards; opacity: 0; transform: translateY(5px); }
+        @keyframes fadeIn { to { opacity: 1; transform: translateY(0); } }
+
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen w-full bg-[#F8FAFC]/90 text-[#0F172A] relative">
+
+    <!-- Intro Screen -->
+    <div id="intro-screen">
+        <canvas id="intro-canvas"></canvas>
+        <div class="intro-content">
+            <h1 class="intro-title">Inventory System</h1>
+            <p class="intro-sub">Initializing Dashboard v3.9...</p>
+            <div class="intro-loader"></div>
+        </div>
+    </div>
+    
+    <!-- Header -->
+    <header class="flex-none bg-white/80 backdrop-blur-md border-b border-slate-200 h-16 z-20 shadow-soft sticky top-0">
+        <div class="h-full px-4 md:px-6 flex items-center justify-between w-full mx-auto">
+            <div class="flex items-center gap-4">
+                <div class="w-9 h-9 rounded-lg bg-slate-900 flex items-center justify-center text-white shadow-sm shrink-0">
+                    <i class="ph-bold ph-cube text-xl"></i>
+                </div>
+                <h1 class="text-sm md:text-base font-bold text-slate-900 tracking-tight truncate" data-i18n-title="mainTitle">「C様、2階 Dゾーン」一時仮置品管理</h1>
+            </div>
+            <div class="flex items-center gap-4 md:gap-6">
+                <div class="hidden md:flex flex-col items-end">
+                    <span class="text-[10px] text-slate-400 font-semibold uppercase tracking-wider" data-i18n="submissionDateLabel">提出日</span>
+                    <span id="submissionDate" class="text-sm font-bold text-slate-700 font-mono tabular-nums"></span>
+                </div>
+                <div class="h-8 w-px bg-slate-200 hidden md:block"></div>
+                <select id="langSwitcher" class="bg-transparent text-sm font-semibold text-slate-600 hover:text-slate-900 cursor-pointer outline-none border-none focus:ring-0">
+                    <option value="ja">🇯🇵 JP</option>
+                    <option value="en">🇬🇧 EN</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toolbar -->
+    <div class="flex-none bg-white/60 backdrop-blur-sm border-b border-slate-200 py-4 z-10 sticky top-16">
+        <div class="px-4 md:px-6 w-full mx-auto flex flex-wrap items-center gap-4">
+            <div class="relative min-w-[180px] flex-grow md:flex-grow-0">
+                <i class="ph ph-calendar-blank absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <select id="monthFilter" class="input-base w-full pl-9 h-11 cursor-pointer appearance-none hover:bg-slate-50"></select>
+                <i class="ph-bold ph-caret-down absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xs"></i>
+            </div>
+            <div class="relative flex-grow max-w-md w-full md:w-auto">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="search" id="searchFilter" class="input-base w-full pl-9 h-11 placeholder:text-slate-400" placeholder="Search...">
+            </div>
+            <div class="flex items-center gap-3 bg-slate-50 border border-slate-200 rounded-lg px-3 h-11 ml-auto">
+                <i class="ph ph-warning text-slate-400"></i>
+                <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap" data-i18n="warningThresholdLabel">LIMIT</span>
+                <input type="number" id="warningThreshold" value="20" min="1" class="w-16 bg-transparent border-none text-base font-mono font-bold text-primary text-right focus:ring-0 outline-none tabular-nums">
+            </div>
+            <div class="h-8 w-px bg-slate-200 hidden xl:block mx-2"></div>
+            <div class="flex gap-3 ml-auto md:ml-0">
+                <button id="reloadButton" class="btn-secondary h-11 px-5 flex items-center gap-2">
+                    <i class="ph-bold ph-arrow-clockwise"></i> <span class="hidden sm:inline" data-i18n="reloadData">Reload</span>
+                </button>
+                <button id="exportCsvButton" class="btn-primary h-11 px-5 flex items-center gap-2">
+                    <i class="ph-bold ph-file-csv text-lg"></i> <span data-i18n="exportCsv">CSV</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Layout -->
+    <main class="flex-grow flex flex-col xl:grid xl:grid-cols-[400px_1fr_420px] gap-6 p-4 md:p-6 w-full mx-auto z-10 relative">
+        
+        <!-- Left Column: KPI & Summary -->
+        <div class="flex flex-col gap-6 shrink-0">
+            <div class="shrink-0">
+                <h2 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-2" data-i18n="kpiTitle">
+                    KPIs
+                </h2>
+                <div id="kpiGrid" class="grid grid-cols-2 gap-4"></div>
+            </div>
+
+            <div class="card-base p-5 shrink-0 bg-white/90 backdrop-blur">
+                <h2 class="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2" data-i18n="summaryTitle">
+                    <i class="ph-duotone ph-clipboard-text text-primary"></i> Summary
+                </h2>
+                <ul id="summaryList" class="space-y-3 text-sm text-slate-600"></ul>
+            </div>
+
+            <!-- Alert Container (Hidden by default) -->
+            <div id="warningContainer" class="flex flex-col bg-white border border-red-100 rounded-xl overflow-hidden shadow-sm min-h-[300px]" style="display: none;">
+                <div class="px-5 py-3 bg-red-50 border-b border-red-100 flex justify-between items-center shrink-0">
+                    <h2 class="text-sm font-bold text-red-800 flex items-center gap-2">
+                        <i class="ph-fill ph-warning-circle"></i> <span data-i18n="warningTitle">Alerts</span>
+                    </h2>
+                    <span class="text-[10px] bg-white px-2 py-0.5 rounded-full text-red-600 border border-red-100 font-bold shadow-sm">Over Limit</span>
+                </div>
+                <div class="overflow-y-auto flex-grow p-0 h-[300px] xl:h-auto max-h-[500px]">
+                    <table class="w-full text-left">
+                        <thead class="bg-red-50/50 text-red-900 text-xs font-bold sticky top-0 z-10">
+                            <tr id="warningTableHeader"></tr>
+                        </thead>
+                        <tbody id="warningTableBody" class="text-sm divide-y divide-red-50 bg-white"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Column: Charts -->
+        <div class="flex flex-col gap-6">
+            <div class="card-base flex flex-col h-[350px] min-h-0 p-5 relative group bg-white/90 backdrop-blur">
+                 <div class="flex justify-between items-center mb-2 shrink-0">
+                    <h2 id="comparisonChartTitle" class="text-sm font-bold text-slate-800 flex items-center gap-2" data-i18n="comparisonChartTitle">
+                        Monthly Trend
+                    </h2>
+                </div>
+                <div class="flex-grow w-full min-h-0 relative">
+                    <canvas id="comparisonChart" class="lazy-chart"></canvas>
+                </div>
+            </div>
+            <div class="card-base flex flex-col h-[350px] min-h-0 p-5 relative group bg-white/90 backdrop-blur">
+                <div class="flex justify-between items-center mb-2 shrink-0">
+                    <h2 id="deptChartTitle" class="text-sm font-bold text-slate-800 flex items-center gap-2" data-i18n="deptChartTitle">
+                        Dept Qty
+                    </h2>
+                </div>
+                <div class="flex-grow w-full min-h-0 relative">
+                    <canvas id="departmentChart" class="lazy-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Detail List -->
+        <div class="card-base flex flex-col min-h-[600px] xl:h-auto shadow-card border-slate-200 bg-white/90 backdrop-blur">
+            <div class="p-4 border-b border-slate-100 bg-white/50 shrink-0 flex justify-between items-center">
+                <h2 class="text-sm font-bold text-slate-800 flex items-center gap-2" data-i18n="detailsTitle">
+                    <i class="ph-duotone ph-list-dashes text-primary"></i> Details
+                </h2>
+                <!-- Hidden select used for internal logic -->
+                <select id="locationFilter" class="hidden"></select>
+            </div>
+
+            <div id="dataCardsContainer" class="flex-grow overflow-y-auto p-4 space-y-4 bg-slate-50/50 max-h-[800px] xl:max-h-none"></div>
+
+            <div id="loadMoreContainer" class="p-3 border-t border-slate-200 bg-white text-center shrink-0">
+                <button id="loadMoreBtn" class="w-full py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-colors border border-dashed border-slate-300 shadow-sm">
+                    <i class="ph-bold ph-caret-down"></i> <span data-i18n="loadMore">Load More</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-6 border-t border-slate-200 mt-12 bg-white/50">
+        <p class="text-xs text-slate-400">
+            © 2025 Warehouse Logistics Div. | Portfolio Demo
+        </p>
+    </footer>
+
+    <!-- Canvas Animation Script -->
+    <script>
+    const IntroNetwork = (() => {
+        const canvas = document.getElementById('intro-canvas');
+        if (!canvas) return { stop: () => {} };
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        let animationId;
+        let particles = [];
+        
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width;
+            canvas.height = height;
+            initParticles();
+        }
+        
+        function initParticles() {
+            particles = [];
+            const count = Math.floor(width * height / 15000); 
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: (Math.random() - 0.5) * 1.5,
+                    size: Math.random() * 2 + 1
+                });
+            }
+        }
+
+        window.addEventListener('resize', resize);
+        resize();
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height); 
+            for (let i = 0; i < particles.length; i++) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                if (p.x < 0 || p.x > width) p.vx *= -1;
+                if (p.y < 0 || p.y > height) p.vy *= -1;
+
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fillStyle = '#94a3b8'; 
+                ctx.fill();
+
+                for (let j = i; j < particles.length; j++) {
+                    let p2 = particles[j];
+                    let dist = (p.x - p2.x)**2 + (p.y - p2.y)**2;
+                    let maxDist = 20000;
+                    if (dist < maxDist) {
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(203, 213, 225, ${1 - dist/maxDist})`;
+                        ctx.lineWidth = 0.5;
+                        ctx.moveTo(p.x, p.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                    }
+                }
+            }
+            animationId = requestAnimationFrame(animate);
+        }
+        animate();
+
+        return {
+            stop: () => {
+                cancelAnimationFrame(animationId);
+                ctx.clearRect(0,0,width,height);
+            }
+        };
+    })();
+    </script>
+
+    <!-- Application Logic -->
+    <script>
+    const COLOR_PALETTE = ['rgba(234, 88, 12, 0.9)', 'rgba(2, 132, 199, 0.9)', 'rgba(245, 158, 11, 0.9)', 'rgba(16, 185, 129, 0.9)', 'rgba(139, 92, 246, 0.9)', 'rgba(236, 72, 153, 0.9)'];
+    Chart.register(ChartDataLabels);
+    Chart.defaults.font.family = "'Inter', 'Noto Sans JP', sans-serif";
+    Chart.defaults.color = '#64748B';
+
+    const DashboardApp = (() => {
+        const CONFIG = { KEYS: { NAME: '名前', DEPT: '部署', LOCATION: '置き場', QUANTITY: '数量' } };
+        
+        const stateStore = {
+            allData: [],
+            historicalData: { labels: [], values: [] },
+            lastMonthData: [],
+            filteredData: [], 
+            currentFilteredData: [],
+            currentFilteredLastMonthData: [],
+            groupedByLocation: {},
+            currentLocationView: [],
+            uiLang: 'ja',
+            filters: { selectedMonth: null, selectedLocation: 'all', searchQuery: '', selectedDept: null, sortKey: 'quantity_desc' },
+            chartState: { isDrilledDown: false, drillDownDept: null },
+            thresholds: { warning: 20 },
+            pagination: { currentPage: 1, itemsPerPage: 6, totalItems: 0 },
+            isLoading: true,
+            error: null,
+            departmentColorMap: {}
+        };
+
+        const dom = {};
+        let departmentChartInstance = null;
+        let comparisonChartInstance = null;
+        const chartObservers = new Map();
+
+        const i18nResources = {
+            ja: {
+                mainTitle: "「C様、2階 Dゾーン」一時仮置品数量", submissionDateLabel: "提出日", monthFilterLabel: "表示月の選択", searchFilterLabel: "統合検索",
+                warningThresholdLabel: "警告 閾値", reloadData: "データ更新", exportCsv: "CSV出力", summaryTitle: "エグゼクティブサマリー", kpiTitle: "主要業績評価指標 (KPI)",
+                warningTitle: "潜在的問題の警告", warningDescription: "数量が閾値を超える品目です。", detailsTitle: "保管場所別詳細", loadMore: "さらに表示",
+                kpiTotalQuantity: "総数量", kpiTrend: "前月比", kpiLocations: "保管場所数", kpiDepartments: "部署数",
+                summaryTotal: (qty) => `総数 <strong>${qty}</strong> 個。`,
+                summaryTrend: (trend, text) => `前月比 <span class="font-bold ${trend.color}">${trend.percentage}%</span> ${text}。`,
+                summaryLocations: (count, top) => `全 <strong>${count}</strong> 箇所のうち、<strong>${top}</strong> が最多。`,
+                summaryDepts: (top) => `<strong>${top}</strong> が最多管理部署。`,
+                trendIncrease: "増加", trendDecrease: "減少", trendNoChange: "変動なし",
+                backButton: "戻る", retry: "再試行", noData: "条件に一致するデータはありません。",
+                errorDataLoad: "データの読み込みに失敗しました。",
+                deptChartTitle: "部署別数量グラフ", individual: "個人別",
+                comparisonChartTitle: "月別数量トレンド", comparisonChartTitleDept: (dept) => `「${dept}」部署 前月比`,
+                newLabel: "NEW", lastMonthCompare: (change) => `前月比: ${change > 0 ? '+' : ''}${change}`,
+                allLocations: "すべての保管場所", latestData: "最新データを見る", unclassified: "未分類",
+                columnHeaders: { name: "名前", department: "部署", location: "保管場所", quantity: "数量" }
+            },
+            en: {
+                mainTitle: "Temp. Items Quantity (Client C, 2F D-Zone)", submissionDateLabel: "Submission Date", monthFilterLabel: "Select Month", searchFilterLabel: "Global Search",
+                warningThresholdLabel: "Warning Threshold", reloadData: "Reload Data", exportCsv: "Export CSV", summaryTitle: "Executive Summary", kpiTitle: "Key Performance Indicators (KPI)",
+                warningTitle: "Quantity Alert", warningDescription: "Items exceeding the quantity threshold.", detailsTitle: "Details by Location", loadMore: "Load More",
+                kpiTotalQuantity: "Total Quantity", kpiTrend: "vs Last Month", kpiLocations: "Locations", kpiDepartments: "Departments",
+                summaryTotal: (qty) => `Total <strong>${qty}</strong> items.`,
+                summaryTrend: (trend, text) => `<span class="font-bold ${trend.color}">${trend.percentage}%</span> ${text} vs last month.`,
+                summaryLocations: (count, top) => `<strong>${top}</strong> has the most items (of <strong>${count}</strong>).`,
+                summaryDepts: (top) => `<strong>${top}</strong> manages the most.`,
+                trendIncrease: "increase", trendDecrease: "decrease", trendNoChange: "no change",
+                backButton: "Back", retry: "Retry", noData: "No data matches these criteria.",
+                errorDataLoad: "Failed to load data.",
+                deptChartTitle: "Quantity by Department", individual: "by Individual",
+                comparisonChartTitle: "Monthly Quantity Trend", comparisonChartTitleDept: (dept) => `'${dept}' Dept. vs Last Month`,
+                newLabel: "NEW", lastMonthCompare: (change) => `vs LM: ${change > 0 ? '+' : ''}${change}`,
+                allLocations: "All Locations", latestData: "View Latest Data", unclassified: "Unclassified",
+                columnHeaders: { name: "Name", department: "Department", location: "Location", quantity: "Quantity" }
+            }
+        };
+
+        function cacheDom() {
+            const ids = [
+                'intro-screen', 'submissionDate', 'langSwitcher', 'monthFilter', 'searchFilter', 
+                'warningThreshold', 'reloadButton', 'exportCsvButton', 'summaryList', 'kpiGrid', 
+                'warningContainer', 'warningTableBody', 'warningTableHeader', 'departmentChart', 
+                'deptChartTitle', 'comparisonChart', 'comparisonChartTitle', 'locationFilter', 
+                'dataCardsContainer', 'loadMoreContainer', 'loadMoreBtn', 'errorBanner', 'errorMessage', 'errorRetryBtn'
+            ];
+            ids.forEach(id => { dom[id] = document.getElementById(id); });
+        }
+        
+        // --- Mock Data Generation Logic (No backend needed) ---
+        const MockGenerator = (() => {
+            const departments = ['営業1課', '営業2課', '開発部', '総務部', '資材課'];
+            const locations = ['棚-A-01', '棚-A-02', '棚-B-01', 'キャビネット-C', '床置きエリアD', '冷蔵保管庫', '廃棄予定エリア', 'ロッカーE'];
+            const names = ['サンプルA', '旧モデルB', '販促資料', '予備部品', 'テスト機材X', '事務用品セット', '展示会用パネル', '返品商品', '工具セット', 'ケーブル類'];
+
+            function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+            function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+            function generateItems(count) {
+                return Array.from({ length: count }, (_, i) => ({
+                    "名前": `${pick(names)}-${rand(100, 999)}`,
+                    "部署": pick(departments),
+                    "置き場": pick(locations),
+                    "数量": rand(1, 35) 
+                }));
+            }
+
+            // Simulate history (Current > Last Month)
+            const currentData = generateItems(65);
+            // Create last month data by slightly modifying current data to ensure some overlap for trend comparison
+            const lastMonthData = currentData.map(item => ({
+                ...item,
+                "数量": Math.max(0, item["数量"] + rand(-10, 10)) // Random change
+            })).filter(() => Math.random() > 0.2); // Remove some items to simulate new entries in current month
+
+            // Historical summary for chart
+            const historical = {
+                labels: ["2024-10", "2024-11", "2024-12", "2025-01", "2025-02"],
+                values: [rand(800, 1000), rand(900, 1100), rand(850, 1050), rand(950, 1200), currentData.reduce((a,b)=>a+b["数量"], 0)]
+            };
+
+            return { current: currentData, last: lastMonthData, historical };
+        })();
+
+        const api = {
+            getSheetData: (month) => new Promise((resolve) => {
+                // Simulate network delay
+                setTimeout(() => {
+                    resolve({ 
+                        current: MockGenerator.current, 
+                        lastMonthData: MockGenerator.last, 
+                        historical: MockGenerator.historical,
+                        sheetName: month || new Date().toISOString().slice(0, 10)
+                    });
+                }, 1500); 
+            }),
+            getSheetNames: () => new Promise((resolve) => {
+                setTimeout(() => resolve(["2025-02-20", "2025-01-20", "2024-12-20"]), 300);
+            })
+        };
+
+        // --- Core Application Logic ---
+
+        async function fetchData(isRetry = false) {
+            if (!isRetry) setState({ isLoading: true, error: null });
+            
+            try {
+                const data = await api.getSheetData(stateStore.filters.selectedMonth);
+                
+                // Remove Intro Screen
+                if (dom['intro-screen']) {
+                    dom['intro-screen'].classList.add('fade-out');
+                    setTimeout(() => { IntroNetwork.stop(); }, 1200);
+                }
+
+                if (dom.submissionDate) dom.submissionDate.textContent = data.sheetName ? data.sheetName.replace(/-/g, '/') : 'N/A';
+                _updateColorMap(data.current || []);
+                setState({
+                    allData: data.current || [],
+                    historicalData: data.historical || { labels: [], values: [] },
+                    lastMonthData: data.lastMonthData || [],
+                    isLoading: false,
+                    error: null
+                });
+                applyFiltersAndRender();
+            } catch (error) {
+                console.error("Data fetch failed:", error);
+                setState({ isLoading: false, error: utils.t('errorDataLoad') });
+                if (dom['intro-screen']) dom['intro-screen'].classList.add('fade-out');
+                render();
+            }
+        }
+
+        function setState(partial) {
+            Object.keys(partial).forEach(k => {
+                const newVal = partial[k];
+                const curVal = stateStore[k];
+                if (curVal && typeof curVal === 'object' && !Array.isArray(curVal) && newVal && typeof newVal === 'object' && !Array.isArray(newVal)) {
+                    stateStore[k] = { ...curVal, ...newVal };
+                } else {
+                    stateStore[k] = newVal;
+                }
+            });
+        }
+
+        const utils = {
+            t: (key, ...args) => {
+                const resource = i18nResources[stateStore.uiLang] || i18nResources.ja;
+                const value = key.split('.').reduce((o, k) => (o || {})[k], resource);
+                if (typeof value === 'function') return value(...args);
+                return value || (key === 'unclassified' ? '未分類' : key);
+            },
+            debounce: (func, delay = 300) => {
+                let timeoutId;
+                return (...args) => {
+                    clearTimeout(timeoutId);
+                    timeoutId = setTimeout(() => func(...args), delay);
+                };
+            },
+            htmlToElement: (html) => {
+                const template = document.createElement('template');
+                template.innerHTML = html.trim();
+                return template.content;
+            },
+            escapeHtml: (str) => String(str || '').replace(/[&<>"']/g, m => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;' })[m]),
+            formatNumber: (num) => new Intl.NumberFormat((stateStore.uiLang || 'ja').replace('_', '-')).format(num),
+            saveState: () => localStorage.setItem('dashboardState_portfolio', JSON.stringify({ uiLang: stateStore.uiLang, thresholds: stateStore.thresholds })),
+            loadState: () => {
+                const saved = JSON.parse(localStorage.getItem('dashboardState_portfolio') || '{}');
+                if (saved.uiLang) setState({ uiLang: saved.uiLang });
+                if (saved.thresholds) setState({ thresholds: saved.thresholds });
+            },
+            getTrend: (current, last) => {
+                if (last > 0) {
+                    const percentage = Number((((current - last) / last) * 100).toFixed(1));
+                    const text = current > last ? utils.t('trendIncrease') : (current < last ? utils.t('trendDecrease') : utils.t('trendNoChange'));
+                    const color = current > last ? 'text-red-500' : (current < last ? 'text-green-500' : 'text-slate-400');
+                    return { percentage, text, color, change: current - last };
+                }
+                return { percentage: 0.0, text: utils.t('trendNoChange'), color: 'text-slate-400', change: 0 };
+            },
+            getSortComparator: (sortKey) => {
+                const K = CONFIG.KEYS;
+                return (a, b) => {
+                    if (sortKey === 'quantity_asc') return (Number(a[K.QUANTITY]) || 0) - (Number(b[K.QUANTITY]) || 0);
+                    if (sortKey === 'quantity_desc') return (Number(b[K.QUANTITY]) || 0) - (Number(a[K.QUANTITY]) || 0);
+                    return 0;
+                };
+            }
+        };
+
+        function populateLocationFilterFromData(baseData) {
+            if (!dom.locationFilter) return; 
+            const K = CONFIG.KEYS;
+            const locations = [...new Set(baseData.map(item => item[K.LOCATION] || utils.t('unclassified')))].sort();
+            dom.locationFilter.innerHTML = `<option value="all">${utils.t('allLocations')}</option>` + 
+                locations.map(loc => `<option value="${loc}">${loc}</option>`).join('');
+            dom.locationFilter.value = stateStore.filters.selectedLocation;
+        }
+
+        function applyFiltersAndRender() {
+            const { searchQuery, selectedLocation, selectedDept } = stateStore.filters;
+            const query = (searchQuery || '').toLowerCase().trim();
+            const K = CONFIG.KEYS;
+            const unclassifiedLabel = utils.t('unclassified');
+
+            let filteredCurrent = stateStore.allData.slice();
+            if (selectedDept) filteredCurrent = filteredCurrent.filter(item => (item[K.DEPT] || unclassifiedLabel) === selectedDept);
+            if (query) {
+                filteredCurrent = filteredCurrent.filter(item =>
+                    (item[K.NAME] || '').toLowerCase().includes(query) ||
+                    (item[K.DEPT] || unclassifiedLabel).toLowerCase().includes(query) ||
+                    (item[K.LOCATION] || unclassifiedLabel).toLowerCase().includes(query)
+                );
+            }
+            populateLocationFilterFromData(filteredCurrent); 
+
+            if (selectedLocation !== 'all') {
+                filteredCurrent = filteredCurrent.filter(item => (item[K.LOCATION] || unclassifiedLabel) === selectedLocation);
+            }
+
+            // Grouping logic
+            const groupedByLocation = filteredCurrent.reduce((acc, item) => {
+                const location = item[K.LOCATION] || unclassifiedLabel;
+                if (!acc[location]) acc[location] = { items: [], total: 0 };
+                acc[location].items.push(item);
+                acc[location].total += (Number(item[K.QUANTITY]) || 0);
+                return acc;
+            }, {});
+
+            const sortedLocations = Object.keys(groupedByLocation).sort();
+
+            setState({
+                groupedByLocation,
+                filteredData: sortedLocations,
+                currentFilteredData: filteredCurrent, 
+                currentFilteredLastMonthData: stateStore.lastMonthData, // Simplified for portfolio
+                pagination: { ...stateStore.pagination, totalItems: sortedLocations.length, currentPage: 1 }
+            });
+
+            updateDataView();
+            render();
+        }
+
+        function _updateColorMap(data) {
+            const K = CONFIG.KEYS;
+            const departments = [...new Set(data.map(item => item[K.DEPT] || utils.t('unclassified')))];
+            const newColorMap = { ...stateStore.departmentColorMap };
+            departments.forEach((dept, i) => {
+                if (!newColorMap[dept]) newColorMap[dept] = COLOR_PALETTE[i % COLOR_PALETTE.length];
+            });
+            setState({ departmentColorMap: newColorMap });
+        }
+
+        function updateDataView() {
+            const { currentPage, itemsPerPage } = stateStore.pagination;
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            if (currentPage === 1) {
+                setState({ currentLocationView: stateStore.filteredData.slice(0, itemsPerPage) });
+            } else {
+                setState({ currentLocationView: [...stateStore.currentLocationView, ...stateStore.filteredData.slice(start, end) ]});
+            }
+        }
+
+        function render() {
+            if (stateStore.isLoading) return;
+            renderUIStrings();
+            renderSummary();
+            renderKPIs();
+            renderWarning();
+            renderCards();
+        }
+
+        function renderUIStrings() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const text = utils.t(el.dataset.i18n);
+                if (text && el.textContent !== text) el.textContent = text;
+            });
+        }
+
+        function renderWarning() {
+            const K = CONFIG.KEYS;
+            const threshold = stateStore.thresholds.warning;
+            const warningItems = (stateStore.currentFilteredData || stateStore.allData).filter(item => Number(item[K.QUANTITY]) > threshold);
+
+            if (!dom.warningContainer) return;
+            if (warningItems.length === 0) { dom.warningContainer.style.display = 'none'; return; }
+            dom.warningContainer.style.display = 'flex'; 
+
+            dom.warningTableHeader.innerHTML = ['name', 'department', 'quantity'].map(h => 
+                `<th class="py-1.5 px-3 text-left whitespace-nowrap bg-red-50 text-xs font-semibold text-red-900 sticky top-0 z-10 border-b border-red-100 ${h==='quantity'?'text-right pr-6':''}">${utils.t(`columnHeaders.${h}`)}</th>`
+            ).join('');
+
+            dom.warningTableBody.innerHTML = warningItems.sort((a,b) => Number(b[K.QUANTITY]) - Number(a[K.QUANTITY])).map(item => `
+                <tr class="hover:bg-red-50 transition-colors border-b border-red-50 last:border-0">
+                    <td class="py-1 px-3 text-slate-700 font-medium truncate max-w-[100px]">${item[K.NAME]}</td>
+                    <td class="py-1 px-3 text-slate-500 text-xs truncate max-w-[80px]">${item[K.DEPT]}</td>
+                    <td class="py-1 pl-3 pr-6 text-right tabular-nums text-red-600 font-bold text-sm whitespace-nowrap">${utils.formatNumber(item[K.QUANTITY])}</td>
+                </tr>`).join('');
+        }
+
+        function renderSummary() {
+            if (!dom.summaryList) return;
+            const K = CONFIG.KEYS;
+            const dataSource = stateStore.currentFilteredData || stateStore.allData;
+            const totalQuantity = dataSource.reduce((s, item) => s + (Number(item[K.QUANTITY]) || 0), 0);
+            const lastMonthTotal = stateStore.lastMonthData.reduce((s, item) => s + (Number(item[K.QUANTITY]) || 0), 0);
+            const trend = utils.getTrend(totalQuantity, lastMonthTotal);
+            
+            const locations = [...new Set(dataSource.map(item => item[K.LOCATION]))];
+            const topLocation = Object.entries(dataSource.reduce((acc, item) => {
+                const loc = item[K.LOCATION]; acc[loc] = (acc[loc] || 0) + (Number(item[K.QUANTITY]) || 0); return acc;
+            }, {})).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'N/A';
+            const topDept = Object.entries(dataSource.reduce((acc,item)=>{
+                const dept = item[K.DEPT]; acc[dept] = (acc[dept] || 0) + (Number(item[K.QUANTITY]) || 0); return acc;
+            }, {})).sort((a,b)=>b[1]-a[1])[0]?.[0] || 'N/A';
+
+            dom.summaryList.innerHTML = `
+                <li class="flex items-start gap-3 animate-fade-in"><div class="mt-0.5"><i class="ph-fill ph-trend-up text-blue-500"></i></div><span>${utils.t('summaryTotal', utils.formatNumber(totalQuantity))} ${trend.percentage !== 0 ? utils.t('summaryTrend', trend, trend.text) : ''}</span></li>
+                <li class="flex items-start gap-3 animate-fade-in" style="animation-delay: 0.1s;"><div class="mt-0.5"><i class="ph-fill ph-map-pin text-orange-500"></i></div><span>${utils.t('summaryLocations', locations.length, utils.escapeHtml(topLocation))}</span></li>
+                <li class="flex items-start gap-3 animate-fade-in" style="animation-delay: 0.2s;"><div class="mt-0.5"><i class="ph-fill ph-users text-emerald-500"></i></div><span>${utils.t('summaryDepts', utils.escapeHtml(topDept))}</span></li>
+            `;
+        }
+
+        function renderKPIs() {
+            if (!dom.kpiGrid) return;
+            const K = CONFIG.KEYS;
+            const dataSource = stateStore.currentFilteredData || stateStore.allData;
+            const totalQuantity = dataSource.reduce((sum, item) => sum + (Number(item[K.QUANTITY]) || 0), 0);
+            const lastMonthTotal = stateStore.lastMonthData.reduce((sum, item) => sum + (Number(item[K.QUANTITY]) || 0), 0);
+            const trend = utils.getTrend(totalQuantity, lastMonthTotal);
+            const locationCount = [...new Set(dataSource.map(item => item[K.LOCATION]))].length;
+            const departmentCount = [...new Set(dataSource.map(item => item[K.DEPT]))].length;
+
+            const kpis = [
+                { label: utils.t('kpiTotalQuantity'), value: utils.formatNumber(totalQuantity) },
+                { label: utils.t('kpiTrend'), value: `${Math.abs(trend.percentage)}%`, subtext: `(${trend.change > 0 ? '+' : ''}${trend.change})`, color: trend.color },
+                { label: utils.t('kpiLocations'), value: locationCount },
+                { label: utils.t('kpiDepartments'), value: departmentCount }
+            ];
+            
+            dom.kpiGrid.innerHTML = kpis.map((kpi, index) => `
+                <div class="bg-white/90 backdrop-blur p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col items-start hover:shadow-md transition-all animate-fade-in" style="animation-delay: ${index * 0.1}s;">
+                    <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">${kpi.label}</p>
+                    <div class="flex items-end gap-2 w-full">
+                        <p class="text-2xl font-bold text-slate-800 leading-none tabular-nums ${kpi.color || ''}">${kpi.value}</p>
+                        ${kpi.subtext ? `<p class="text-[10px] font-semibold ${kpi.color || 'text-slate-400'} mb-0.5 tabular-nums">${kpi.subtext}</p>` : ''}
+                    </div>
+                </div>`).join('');
+        }
+
+        function renderCards() {
+            const container = dom.dataCardsContainer;
+            if (!container) return;
+            if (stateStore.pagination.currentPage === 1) container.innerHTML = '';
+            
+            const locationsToRender = stateStore.currentLocationView;
+            if (locationsToRender.length === 0 && stateStore.pagination.currentPage === 1) {
+                container.innerHTML = `<div class="col-span-full text-center py-12 bg-white rounded-xl border border-dashed border-slate-200 text-slate-400 animate-fade-in"><i class="ph-duotone ph-magnifying-glass text-4xl mb-2"></i><p class="text-sm">${utils.t('noData')}</p></div>`;
+                dom.loadMoreBtn.classList.add('hidden');
+                return;
+            }
+
+            const fragment = document.createDocumentFragment();
+            const startIdx = (stateStore.pagination.currentPage - 1) * stateStore.pagination.itemsPerPage;
+            const newLocations = stateStore.currentLocationView.slice(startIdx);
+
+            newLocations.forEach((location, index) => {
+                const group = stateStore.groupedByLocation[location];
+                if (!group) return;
+                
+                // Group Card Logic
+                const itemsByDept = group.items.reduce((acc, item) => {
+                    const dept = item[CONFIG.KEYS.DEPT] || utils.t('unclassified');
+                    if (!acc[dept]) acc[dept] = []; acc[dept].push(item); return acc;
+                }, {});
+
+                const deptHtml = Object.keys(itemsByDept).sort().map(dept => {
+                    const deptItems = itemsByDept[dept];
+                    const deptTotal = deptItems.reduce((s, it) => s + (Number(it[CONFIG.KEYS.QUANTITY]) || 0), 0);
+                    
+                    const rows = deptItems.sort(utils.getSortComparator(stateStore.filters.sortKey)).map(item => {
+                         const qty = Number(item[CONFIG.KEYS.QUANTITY]) || 0;
+                         return `
+                         <tr class="group/row hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
+                            <td class="py-2.5 px-4 text-sm text-slate-700 font-medium truncate max-w-[150px]">${utils.escapeHtml(item[CONFIG.KEYS.NAME])}</td>
+                            <td class="py-2.5 px-4 text-right"><span class="text-sm font-bold tabular-nums ${qty > stateStore.thresholds.warning ? 'text-red-600' : 'text-slate-800'}">${utils.formatNumber(qty)}</span></td>
+                         </tr>`;
+                    }).join('');
+
+                    return `
+                    <div class="bg-white rounded-lg border border-slate-200 overflow-hidden shadow-sm mb-4 last:mb-0">
+                        <div class="bg-slate-50/80 px-3 py-2 flex justify-between items-center border-b border-slate-100">
+                            <span class="font-bold text-xs text-slate-600 uppercase tracking-wide">${utils.escapeHtml(dept)}</span>
+                            <span class="font-bold text-xs text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded shadow-sm tabular-nums">${utils.formatNumber(deptTotal)}</span>
+                        </div>
+                        <table class="w-full text-left"><tbody>${rows}</tbody></table>
+                    </div>`;
+                }).join('');
+
+                const cardHtml = `
+                    <details class="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden open:ring-2 open:ring-slate-100 animate-fade-in" style="animation-delay: ${index * 0.1}s">
+                        <summary class="p-4 border-b border-slate-100 flex justify-between items-center cursor-pointer select-none bg-white">
+                            <div class="flex items-center gap-3 overflow-hidden">
+                                <div class="w-6 h-6 rounded bg-slate-100 flex items-center justify-center text-slate-400 group-open:bg-slate-800 group-open:text-white transition-colors shrink-0"><i class="ph-bold ph-caret-right text-xs group-open:rotate-90"></i></div>
+                                <h3 class="font-bold text-sm text-slate-800 truncate">${utils.escapeHtml(location)}</h3>
+                            </div>
+                            <div class="shrink-0 text-right ml-4">
+                                <span class="block text-lg font-bold text-slate-900 tabular-nums leading-none">${utils.formatNumber(group.total)}</span>
+                                <span class="block text-[10px] font-medium text-slate-400 uppercase mt-1">Total</span>
+                            </div>
+                        </summary>
+                        <div class="p-4 bg-slate-50 space-y-4 border-t border-slate-100">${deptHtml}</div>
+                    </details>`;
+                
+                fragment.appendChild(utils.htmlToElement(cardHtml).firstElementChild);
+            });
+            
+            container.appendChild(fragment);
+            if (stateStore.currentLocationView.length < stateStore.filteredData.length) dom.loadMoreBtn.classList.remove('hidden');
+            else dom.loadMoreBtn.classList.add('hidden');
+        }
+
+        // --- Chart Logic ---
+
+        function setupChartObservers() {
+            const observer = new IntersectionObserver((entries, obs) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const canvas = entry.target;
+                        if (canvas.id === 'departmentChart') renderDepartmentChart();
+                        else if (canvas.id === 'comparisonChart') renderComparisonChart();
+                        obs.unobserve(canvas);
+                    }
+                });
+            }, { rootMargin: '50px' });
+            document.querySelectorAll('.lazy-chart').forEach(chart => observer.observe(chart));
+        }
+
+        function renderDepartmentChart() {
+            if (!dom.departmentChart) return;
+            const K = CONFIG.KEYS;
+            dom.deptChartTitle.innerHTML = stateStore.chartState.isDrilledDown 
+                ? `<button class="mr-2 hover:text-primary transition-colors" onclick="DashboardApp.handleDeptChartBack()"><i class="ph-bold ph-arrow-left"></i></button> 「${stateStore.chartState.drillDownDept}」 ${utils.t('individual')}` 
+                : `<i class="ph-duotone ph-chart-pie-slice text-slate-400 mr-2"></i> ${utils.t('deptChartTitle')}`;
+
+            let dataForChart;
+            if (stateStore.chartState.isDrilledDown) {
+                const deptName = stateStore.chartState.drillDownDept;
+                dataForChart = stateStore.allData
+                    .filter(it => (it[K.DEPT] || utils.t('unclassified')) === deptName)
+                    .reduce((acc,curr) => { acc[curr[K.NAME]] = (acc[curr[K.NAME]] || 0) + (Number(curr[K.QUANTITY])||0); return acc; }, {});
+            } else {
+                dataForChart = stateStore.allData.reduce((acc,curr) => {
+                    const dept = curr[K.DEPT] || utils.t('unclassified');
+                    acc[dept] = (acc[dept] || 0) + (Number(curr[K.QUANTITY])||0); return acc;
+                }, {});
+            }
+
+            const entries = Object.entries(dataForChart).sort((a,b) => b[1] - a[1]);
+            const labels = entries.map(e=>e[0]);
+            const values = entries.map(e=>e[1]);
+            const backgroundColors = labels.map((l, idx) => stateStore.departmentColorMap[l] || COLOR_PALETTE[idx % COLOR_PALETTE.length]);
+
+            if (departmentChartInstance) departmentChartInstance.destroy();
+            
+            departmentChartInstance = new Chart(dom.departmentChart.getContext('2d'), {
+                type: 'bar',
+                data: { labels, datasets: [{ label: utils.t('kpiTotalQuantity'), data: values, backgroundColor: backgroundColors, borderRadius: 4, borderSkipped: false, maxBarThickness: 40 }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    onClick: (evt, elements) => {
+                        if (stateStore.chartState.isDrilledDown) { if (elements.length === 0) handleDeptChartBack(); } 
+                        else if (elements.length > 0) {
+                             handleDeptChartClick(departmentChartInstance.data.labels[elements[0].index]);
+                        }
+                    },
+                    plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', color: '#64748B', font: { weight: 'bold', size: 11 }, formatter: val => utils.formatNumber(val) } },
+                    scales: { y: { beginAtZero: true, grace: '10%', border: { display: false }, grid: { color: '#f1f5f9' } }, x: { grid: { display: false }, border: { display: false } } }
+                }
+            });
+        }
+
+        function renderComparisonChart() {
+            if (!dom.comparisonChart) return;
+            if (comparisonChartInstance) comparisonChartInstance.destroy();
+
+            const labels = stateStore.historicalData.labels;
+            const values = stateStore.historicalData.values;
+            
+            comparisonChartInstance = new Chart(dom.comparisonChart.getContext('2d'), {
+                type: 'bar',
+                data: { labels, datasets: [
+                    { label: utils.t('kpiTotalQuantity'), data: values, backgroundColor: [utils.escapeHtml('#cbd5e1'), '#cbd5e1', '#cbd5e1', '#cbd5e1', '#0F172A'], borderRadius: 4, barPercentage: 0.6 },
+                    { type: 'line', label: 'Trend', data: values, borderColor: '#EA580C', borderWidth: 2, tension: 0.3, pointBackgroundColor: '#fff', pointBorderColor: '#EA580C', pointBorderWidth: 2, pointRadius: 4, fill: false, datalabels: { display: false } }
+                ]},
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true, grace: '10%', grid: { color: '#f1f5f9' }, border: { display: false }}, x: { grid: { display: false }, border: { display: false }}},
+                    plugins: { legend: { display: false }, datalabels: { anchor: 'end', align: 'top', color: '#64748B', font: { weight: 'bold', size: 11 }, formatter: val => utils.formatNumber(val) } }
+                }
+            });
+        }
+
+        // --- Event Handlers ---
+
+        function handleDeptChartClick(label) {
+            setState({ chartState: { isDrilledDown: true, drillDownDept: label }, filters: { ...stateStore.filters, searchQuery: '', selectedDept: label, selectedLocation: 'all' }});
+            updateUIForChartInteraction();
+        }
+
+        function handleDeptChartBack() {
+            setState({ chartState: { isDrilledDown: false, drillDownDept: null }, filters: { ...stateStore.filters, searchQuery: '', selectedDept: null, selectedLocation: 'all' }});
+            updateUIForChartInteraction();
+        }
+
+        function updateUIForChartInteraction() {
+            dom.searchFilter.value = '';
+            dom.locationFilter.value = 'all';
+            applyFiltersAndRender();
+            renderDepartmentChart();
+            renderComparisonChart();
+        }
+
+        function bindEvents() {
+            if (dom.reloadButton) dom.reloadButton.addEventListener('click', () => { window.location.reload(); });
+            if (dom.exportCsvButton) dom.exportCsvButton.addEventListener('click', () => { alert("Portfolio Demo: CSV Export triggered."); });
+            if (dom.locationFilter) dom.locationFilter.addEventListener('change', (e) => { 
+                setState({ filters: { ...stateStore.filters, selectedLocation: e.target.value }}); applyFiltersAndRender(); 
+            });
+            if (dom.monthFilter) dom.monthFilter.addEventListener('change', (e) => {
+                 setState({ filters: { ...stateStore.filters, selectedMonth: e.target.value }}); fetchData(); 
+            });
+            if (dom.searchFilter) dom.searchFilter.addEventListener('input', utils.debounce((e) => {
+                setState({ filters: { ...stateStore.filters, searchQuery: e.target.value }}); applyFiltersAndRender();
+            }, 300));
+            if (dom.warningThreshold) dom.warningThreshold.addEventListener('change', (e) => {
+                setState({ thresholds: { warning: parseInt(e.target.value, 10) }}); renderWarning(); renderCards();
+            });
+            if (dom.langSwitcher) dom.langSwitcher.addEventListener('change', (e) => {
+                setState({ uiLang: e.target.value }); populateFilters(); applyFiltersAndRender(); renderDepartmentChart();
+            });
+            if (dom.loadMoreBtn) dom.loadMoreBtn.addEventListener('click', () => {
+                setState({ pagination: { ...stateStore.pagination, currentPage: stateStore.pagination.currentPage + 1 }}); updateDataView(); renderCards();
+            });
+        }
+
+        async function populateFilters() {
+            const sheetNames = await api.getSheetNames();
+            dom.monthFilter.innerHTML = `<option value="">${utils.t('latestData')}</option>` + 
+                sheetNames.map(name => `<option value="${name}">${name} Data</option>`).join('');
+            dom.monthFilter.value = stateStore.filters.selectedMonth || '';
+        }
+
+        async function init() {
+            cacheDom();
+            utils.loadState();
+            dom.langSwitcher.value = stateStore.uiLang;
+            dom.warningThreshold.value = stateStore.thresholds.warning;
+            bindEvents();
+            await fetchData();
+            await populateFilters();
+            setupChartObservers();
+        }
+
+        return { init, handleDeptChartBack };
+    })();
+
+    document.addEventListener('DOMContentLoaded', () => DashboardApp.init());
+    </script>
+</body>
+</html>
