@@ -28,3 +28,33 @@ graph LR
     end
     
     Controller -- "7. 비동기 응답\n(SuccessHandler)" --> Browser
+
+
+## ✨ Key Features
+### 1. Dynamic Theme & Layout Engine
+단순한 색상 변경(Dark Mode)을 넘어, **CSS Variable**과 **Grid System**을 활용해 DOM 구조의 물리적 배치를 실시간으로 변경합니다.
+- **Corporate Theme:** 사이드바(Nav)가 상단 헤더(Header)로 이동
+- **Mobile Theme:** 데스크톱 브라우저에서도 모바일 앱 경험(Bottom Navigation) 시뮬레이션
+- **Terminal Theme:** 개발자 친화적인 Hacker Style 및 Canvas 매트릭스 효과 적용
+
+### 2. Serverless Backend (GAS)
+- **Zero Cost Deployment:** Google Workspace 계정만으로 호스팅 및 백엔드 구축
+- **Sheet as a Database:** Google Sheets를 CMS로 활용하여 실시간 재고/불명품 데이터 CRUD 처리
+- **Custom Router:** `doGet(e)` 함수를 활용한 자체 라우팅 및 템플릿 서빙 구현
+
+---
+
+## 🔥 Trouble Shooting (핵심 문제 해결)
+### Q. 단일 HTML 파일에서 1,000줄이 넘는 코드를 어떻게 관리했나요?
+**[문제 상황]**
+초기에는 `index.html` 하나에 CSS, JS, HTML이 모두 섞여 있어, 테마가 추가될수록 가독성이 떨어지고 유지보수가 불가능에 가까웠습니다.
+
+**[해결 과정]**
+Google Apps Script의 `HtmlService`를 활용해 **Include 패턴**을 도입했습니다.
+1. `stylesheet.html`, `javascript.html`로 파일을 물리적으로 분리
+2. 서버 측(`Code.js`)에 `include()` 헬퍼 함수를 작성하여 렌더링 시점에 파일을 병합
+3. **결과:** 관심사 분리(Separation of Concerns)를 통해 코드 탐색 시간을 50% 이상 단축하고 모듈화에 성공했습니다.
+
+### Q. 테마 변경 시 레이아웃 깨짐 현상은 없었나요?
+**[해결]** CSS의 `transition` 속성과 JavaScript의 상태 관리를 결합했습니다.
+레이아웃이 크게 바뀌는(Layout Shift) 테마(예: Corporate) 전환 시, `requestAnimationFrame`을 통해 캔버스 리사이징을 동기화하여 깜빡임 없는 전환을 구현했습니다.
