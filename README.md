@@ -9,3 +9,22 @@
 * **Backend:** Google Apps Script (Serverless)
 * **Frontend:** HTML5, CSS3, JavaScript (No Framework)
 * **Data:** Google Spreadsheet (Database)
+## 🏗 System Architecture
+이 프로젝트는 **MVC 패턴**을 변형하여, Google Apps Script 환경에 최적화된 아키텍처를 따르고 있습니다.
+
+```mermaid
+graph LR
+    User((User)) -- "1. 접속 (URL)" --> GAS[Google Apps Script\n(ContentService)]
+    GAS -- "2. HTML 템플릿 서빙" --> Browser[Web Browser\n(SPA Client)]
+    
+    subgraph Frontend Logic
+    Browser -- "3. 테마 변경 (CSS Var)" --> Layout[Dynamic Layout Engine]
+    Browser -- "4. 데이터 요청\n(google.script.run)" --> Controller[Server Controller\n(Code.gs)]
+    end
+    
+    subgraph Backend Serverless
+    Controller -- "5. 데이터 조회/가공" --> DB[(Google Sheets\nDatabase)]
+    DB -- "6. JSON 데이터 반환" --> Controller
+    end
+    
+    Controller -- "7. 비동기 응답\n(SuccessHandler)" --> Browser
